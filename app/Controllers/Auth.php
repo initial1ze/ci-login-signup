@@ -82,9 +82,10 @@ class Auth extends BaseController
             $registrationSuccess = $this->request->getGet('registration');
             $logoutSuccess = $this->request->getGet('logout');
 
-            $referer = $this->request->getHeaderLine('Referer');
+            $hasReferer = $this->request->hasHeader('Referer');
             $data = [];
-            if (!empty($referer)) {
+
+            if ($hasReferer) {
                 $data = [
                     'registrationSuccess' => $registrationSuccess,
                     'logoutSuccess' => $logoutSuccess
