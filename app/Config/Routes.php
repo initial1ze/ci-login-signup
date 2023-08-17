@@ -37,13 +37,8 @@ $routes->get('signup', [Auth::class, 'signup']);
 $routes->post('/auth/signup', [Auth::class, 'signup']);
 $routes->get('login', [Auth::class, 'login']);
 $routes->post('/auth/login', [Auth::class, 'login']);
+$routes->get('dashboard', [Auth::class, 'dashboard']);
 $routes->get('logout', [Auth::class, 'logout']);
-
-
-use App\Controllers\Dashboard;
-
-$routes->get('dashboard', [Dashboard::class, 'index']);
-
 /*
  * --------------------------------------------------------------------
  * Additional Routing

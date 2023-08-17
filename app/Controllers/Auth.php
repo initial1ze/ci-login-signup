@@ -12,7 +12,7 @@ class Auth extends BaseController
         helper('form');
 
         if (!$this->request->is('post'))
-            return view('auth/signup');
+            return view('template/header', ['title' => 'Sign Up']) . view('auth/signup') . view('template/footer');
 
         $rules = [
             'email' => [
@@ -40,9 +40,13 @@ class Auth extends BaseController
 
         $isValid = $this->validate($rules);
 
-        if (!$isValid) {
-            return redirect()->to(base_url('signup'))->withInput();
-        } else {
+        $response = array('success' => false);
+
+        $validationErrors = $this->validator->getErrors();
+        $errors = array_values($validationErrors);
+
+        if ($isValid) {
+
             $model = model('UsersModel');
 
             $post = $this->request->getPost(['email', 'password']);
@@ -57,9 +61,13 @@ class Auth extends BaseController
             ];
 
             $model->save($data);
-            session()->setFlashdata('success', 'User created successfully!');
-            return redirect()->to(base_url('login'));
+
+            $response['success'] = true;
         }
+
+        $response['errors'] = $errors;
+
+        exit(json_encode($response));
     }
 
     public function login()
@@ -69,8 +77,29 @@ class Auth extends BaseController
 
         helper('form');
 
-        if (!$this->request->is('post'))
-            return view('auth/login');
+        if (!$this->request->is('post')) {
+
+            $registrationSuccess = $this->request->getGet('registration');
+            $logoutSuccess = $this->request->getGet('logout');
+
+            $referer = $this->request->getHeaderLine('Referer');
+            $data = [];
+            if (!empty($referer)) {
+                $data = [
+                    'registrationSuccess' => $registrationSuccess,
+                    'logoutSuccess' => $logoutSuccess
+                ];
+            } else {
+                $data = [
+                    'registrationSuccess' => false,
+                    'logoutSuccess' => false
+                ];
+            }
+
+            return  view('template/header', ['title' => 'Login']) .
+                view('auth/login', $data) .
+                view('template/footer');
+        }
 
         $rules = [
             'email' => [
@@ -92,9 +121,12 @@ class Auth extends BaseController
 
         $isValid = $this->validate($rules);
 
-        if (!$isValid) {
-            return redirect()->to(base_url('login'))->withInput();
-        } else {
+        $response = array('success' => false);
+
+        $validationErrors = $this->validator->getErrors();
+        $errors = array_values($validationErrors);
+
+        if ($isValid) {
             $model = model('UsersModel');
 
             $post = $this->request->getPost(['email', 'password']);
@@ -105,13 +137,29 @@ class Auth extends BaseController
             $user = $model->getUserByEmail($email);
 
             if (!password_verify($password, $user['password'])) {
-                session()->setFlashdata('failure', 'Wrong password!');
-                return redirect()->to(base_url('login'));
+                $errors[] = 'Wrong password!';
+            } else {
+                session()->set('userID', $user['id']);
+                $response['success'] = true;
             }
-
-            session()->set('userID', $user['id']);
-            return redirect()->to(base_url('dashboard'));
         }
+
+        $response['errors'] = $errors;
+
+        exit(json_encode($response));
+    }
+
+    public function dashboard()
+    {
+        if (!session()->has('userID'))
+            return redirect()->to(base_url('login'));
+
+        $model = model('UsersModel');
+        $userID = session()->get('userID');
+
+        $data['user'] = $model->getUserByID($userID);
+
+        return view('template/header', ['title' => 'Dashboard']) . view('auth/dashboard', $data) . view('template/footer');
     }
 
     public function logout()
@@ -119,8 +167,7 @@ class Auth extends BaseController
         if (!session()->has('userID'))
             return redirect()->to(base_url('login'));
 
-        session()->remove('userID');
-        session()->setFlashdata('success', 'Logout successfully!');
-        return redirect()->to(base_url('login'));
+        session()->destroy();
+        return redirect()->to(base_url('login?logout=success'));
     }
 }
